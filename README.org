@@ -121,3 +121,10 @@ Use the [[file:scripts/create-kubeconfig.sh][helper script]] to generate the kub
 Use firewall to block access that's the easiest and the safest way
 
 ** Step 2: CI/CD Pipeline
+*** Security-Scan
+- Bandit: Common python security issues, works on patterns and misses complex code
+- Semgrep: Has dedicated support for the flask framework
+
+** Step 3: Deploy Flask App via Helm
+*** Application
+Application is a simple web app that fetches random facts from the [[https://uselessfacts.jsph.pl/api/v2/facts/random][random facts api]]
