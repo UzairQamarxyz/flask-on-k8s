@@ -1,0 +1,123 @@
+#+TITLE:        DevSecOps Assessment
+#+SUBTITLE:     Quick reference card
+#+AUTHOR:       Uzair Qamar
+#+EMAIL:        uzairqamarxyz@gmail.com
+#+DESCRIPTION:  DevSecOps Assessment Task
+#+KEYWORDS:     kubernetes, helm, kubeadm, python, flask, pytest, cicd
+#+LANGUAGE:     en
+
+
+* DevSecOps Assessment
+
+https://docs.tigera.io/calico/latest/getting-started/kubernetes/k8s-single-node
+** Step 1: Cluster Setup
+*** How to setup the cluster
+1. Install kubeadm along with containerd runtime https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+   1. What is containerd? Why are there so many options
+2. Create a cluster https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network
+   1. For debian users: https://stackoverflow.com/a/74695838
+   2. src_bash[:exports code]{# echo 1 >/proc/sys/net/ipv4/ip_forward} Enable IP Fwd
+   3. src_bash[:exports code]{KUBELET_EXTRA_ARGS=--fail-swap-on=false} If you have swap on in your cluster
+   4. src_bash[:exports code]{sudo kubeadm init --pod-network-cidr=192.168.0.0/16} init kubeadm
+   5. Create a new kube config for kubeadm
+      #+begin_src
+mkdir -p $HOME/.kube
+sudo cp /etc/kubernetes/admin.conf $HOME/.kube/kubeadm-config
+sudo chown $(id -u):$(id -g) $HOME/.kube/kubeadm-config
+      #+end_src
+   6. kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+*** Install Calico
+https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises
+1. Add this to NetworkManager configuration file.
+#+begin_src
+# /etc/NetworkManager/conf.d/calico.conf
+[keyfile]
+unmanaged-devices=interface-name:cali*;interface-name:tunl*;interface-name:vxlan.calico;interface-name:vxlan-v6.calico;interface-name:wireguard.cali;interface-name:wg-v6.cali
+#+end_src
+1. Install Tigera Operator
+#+begin_src shell
+helm repo add projectcalico https://docs.tigera.io/calico/charts
+helm install calico projectcalico/tigera-operator --version v3.30.3 --namespace tigera-operator --create-namespace
+#+end_src
+
+2. Watch the status of the calico pods
+#+begin_src shell
+watch kubectl get pods -n calico-system
+#+end_src
+
+3. If the pods are stuck in "ContainerCreating" or "Pending". Make sure the =calico= & =calico-ipam= binaries are also in =/usr/lib/cni/=
+#+begin_src shell
+sudo cp /opt/cni/bin/calico /opt/cni/bin/calico-ipam /usr/lib/cni/
+#+end_src
+
+
+*** Install Metrics Server
+Let's use Helm for this
+
+#+begin_src shell
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+helm upgrade --install metrics-server metrics-server/metrics-server
+#+end_src
+
+*** Enable RBAC & Create SA for Deployments
+RBAC should already be enabled. Here's a quick check.
+#+begin_src shell
+kubectl api-versions | grep rbac
+#+end_src
+
+For the Service Account, the Role and the RoleBinding. This is namespaced.
+#+begin_src yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: deployer
+  namespace: dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: dev
+  name: deployer-role
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deployer-binding
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: deployer
+    namespace: dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: deployer-role
+#+end_src
+
+*** Generate and store kubeconfig for SA
+Use the [[file:scripts/create-kubeconfig.sh][helper script]] to generate the kubeconfig.
+
+*** Restrict Access
+Use firewall to block access that's the easiest and the safest way
+
+** Step 2: CI/CD Pipeline
