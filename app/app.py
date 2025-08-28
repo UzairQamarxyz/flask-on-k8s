@@ -14,7 +14,7 @@ def get_language() -> str:
     return os.getenv("APP_LANGUAGE", "en")
 
 
-@app.route("/")
+@app.route("/fact")
 def get_fact() -> Response:
     """Fetch a random useless fact and render as HTML."""
     try:
