@@ -1,0 +1,58 @@
+# values.yaml
+
+# --- Application settings ---
+replicaCount: 2
+
+image:
+  repository: uzayrq/flask-app
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 5000
+
+# --- Resources ---
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# --- Probes ---
+readinessProbe:
+  path: /healthz
+  port: 5000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+livenessProbe:
+  path: /failcheck
+  port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 20
+
+# --- Autoscaling ---
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 50
+
+# --- Secrets (reference only, not actual secret values) ---
+envSecrets:
+  - name: flask-secret-env
+    keys:
+      - SECRET_KEY
+      - DATABASE_PASSWORD
+
+# --- Network Policy ---
+networkPolicy:
+  enabled: true
+  allowedNamespaces:
+    - ingress-namespace
+  allowedPods:
+    - app=nginx-ingress
