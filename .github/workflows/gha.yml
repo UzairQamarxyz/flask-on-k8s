@@ -15,10 +15,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install Bandit
         run: pip install bandit
-
       - name: Run Bandit (SAST)
         run: bandit -r app -ll
 
@@ -30,10 +28,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install pip-audit
         run: pip install pip-audit
-
       - name: Run Dependency Audit
         run: pip-audit -r app/requirements.txt
 
@@ -45,69 +41,50 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: pip install -r app/requirements.txt
-
       - name: Run pytest
         run: pytest -v app/
 
-  build-scan-push:
+  lint-dockerfile:
     runs-on: ubuntu-latest
-    needs: tests # only run if tests pass
+    needs: tests
     steps:
       - uses: actions/checkout@v4
-
-      # Dockerfile lint
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
 
-      # Build Docker image
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: lint-dockerfile
+    steps:
+      - uses: actions/checkout@v4
       - name: Build Docker image
         run: docker build -t flask:${{ github.sha }} ./app/
 
-      # Image scan
+  scan-docker:
+    runs-on: ubuntu-latest
+    needs: build-docker
+    steps:
+      - uses: actions/checkout@v4
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@0.19.0
         with:
           image-ref: flask:${{ github.sha }}
 
-      # Push to DockerHub
+  push-docker:
+    runs-on: ubuntu-latest
+    needs: scan-docker
+    steps:
+      - uses: actions/checkout@v4
       - name: Log in to DockerHub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Push Docker image
         run: |
           docker tag flask:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/flask:${{ github.sha }}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:${{ github.sha }}
-
-#   deploy:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v4
-
-#       - name: Setup kubectl
-#         uses: azure/setup-kubectl@v4
-#         with:
-#           version: v1.29.0
-
-#       - name: Setup Helm
-#         uses: azure/setup-helm@v4
-#         with:
-#           version: v3.14.0
-
-#       - name: Configure Kube Context
-#         run: |
-#           echo "${{ secrets.KUBECONFIG_FILE }}" > kubeconfig.yaml
-#           export KUBECONFIG=kubeconfig.yaml
-
-#       - name: Helm Upgrade
-#         run: |
-#           helm upgrade --install myapp ./helm \
-#             --set image.repository=mydockerhubuser/myapp \
-#             --set image.tag=${{ github.sha }}
