@@ -12,9 +12,11 @@
 https://docs.tigera.io/calico/latest/getting-started/kubernetes/k8s-single-node
 ** Step 1: Cluster Setup
 *** How to setup the cluster
-1. Install kubeadm along with containerd runtime https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+1. containerd config default | tee /etc/containerd/config.toml > /dev/null
+2. sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" "/etc/containerd/config.toml"
+3. Install kubeadm along with containerd runtime https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
    1. What is containerd? Why are there so many options
-2. Create a cluster https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network
+4. Create a cluster https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network
    1. For debian users: https://stackoverflow.com/a/74695838
    2. src_bash[:exports code]{# echo 1 >/proc/sys/net/ipv4/ip_forward} Enable IP Fwd
    3. src_bash[:exports code]{KUBELET_EXTRA_ARGS=--fail-swap-on=false} If you have swap on in your cluster
@@ -54,10 +56,20 @@ sudo cp /opt/cni/bin/calico /opt/cni/bin/calico-ipam /usr/lib/cni/
 
 *** Install Metrics Server
 Let's use Helm for this
+https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/#kubelet-serving-certs
+I ended up doing the insecure tls
+#+begin_src shell
+#+end_src
 
 #+begin_src shell
 helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-helm upgrade --install metrics-server metrics-server/metrics-server
+helm upgrade --install metrics-server metrics-server/metrics-server \
+  -n kube-system \
+  --set "args[0]=--cert-dir=/tmp" \
+  --set "args[1]=--kubelet-preferred-address-types=InternalIP\,ExternalIP\,Hostname" \
+  --set "args[2]=--kubelet-use-node-status-port" \
+  --set "args[3]=--metric-resolution=15s" \
+  --set "args[4]=--kubelet-insecure-tls"
 #+end_src
 
 *** Enable RBAC & Create SA for Deployments
@@ -121,6 +133,9 @@ Use the [[file:scripts/create-kubeconfig.sh][helper script]] to generate the kub
 Use firewall to block access that's the easiest and the safest way
 
 ** Step 2: CI/CD Pipeline
+
+*** SAST
+- Bandit
 *** Security-Scan
 - Bandit: Common python security issues, works on patterns and misses complex code
 

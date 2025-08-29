@@ -17,5 +17,5 @@ spec:
         {{- range .Values.networkPolicy.allowedPods }}
         - podSelector:
             matchLabels:
-              {{ . }}
+              {{- toYaml . | nindent 14 }}
         {{- end }}

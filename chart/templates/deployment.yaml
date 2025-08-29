@@ -22,16 +22,14 @@ spec:
           ports:
             - containerPort: {{ .Values.service.port }}
           env:
-            - name: FLASK_ENV
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: FLASK_ENV
-            - name: SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
-                  key: SECRET_KEY
+            - name: FLASK_RUN_HOST
+              value: "{{ .Values.app.host }}"
+            - name: FLASK_RUN_PORT
+              value: "{{ .Values.app.port }}"
+            - name: APP_TITLE
+              value: "{{ .Values.app.title }}"
+            - name: APP_LANGUAGE
+              value: "{{ .Values.app.language }}"
           readinessProbe:
             httpGet:
               path: /healthz

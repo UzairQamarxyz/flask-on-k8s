@@ -8,6 +8,12 @@ image:
   tag: "latest"
   pullPolicy: IfNotPresent
 
+app:
+  host: 127.0.0.1
+  port: 5000
+  title: "Random Facts API"
+  language: "en"
+
 service:
   type: ClusterIP
   port: 80
@@ -55,4 +61,4 @@ networkPolicy:
   allowedNamespaces:
     - ingress-namespace
   allowedPods:
-    - app=nginx-ingress
+    - app: nginx-ingress
