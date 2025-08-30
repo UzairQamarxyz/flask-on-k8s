@@ -6,6 +6,18 @@ on:
   pull_request:
 
 jobs:
+  check-paths:
+    runs-on: ${{ vars.RUNNER_OS }}
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            docker:
+              - 'app/Dockerfile'
+
   sast:
     runs-on: ${{ vars.RUNNER_OS }}
     steps:
@@ -103,5 +115,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Push Docker image
         run: |
+          docker tag flask:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/flask:latest
           docker tag flask:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/flask:${{ github.sha }}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:${{ github.sha }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:latest
