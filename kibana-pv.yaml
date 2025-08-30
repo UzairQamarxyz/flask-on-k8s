@@ -1,0 +1,24 @@
+# kibana-pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kibana-pv
+spec:
+  capacity:
+    storage: 2Gi # Kibana needs less space than Elasticsearch
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  # Use the same StorageClass we created before
+  storageClassName: local-storage
+  local:
+    path: /mnt/kibana-data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - tiqqun # Your node's name

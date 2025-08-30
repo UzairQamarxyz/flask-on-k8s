@@ -1,12 +1,31 @@
-# config:
-#   customParsers: |
-#     [PARSER]
-#         Name        app_json
-#         Format      json
-#         Time_Key    time
-#         Time_Format %Y-%m-%dT%H:%M:%S
+# Use a secure TLS configuration by mounting the Elasticsearch CA certificate
+extraVolumes:
+  - name: es-ca
+    secret:
+      secretName: elasticsearch-master-crt
 
-# Testing
+extraVolumeMounts:
+  - name: es-ca
+    mountPath: /fluent-bit/certs/ca.crt
+    subPath: ca.crt
+    readOnly: true
+
+# Mount the elastic password from its secret
+extraEnvVarsSecret: "elasticsearch-secret"
+
+# Correctly configure security contexts for a DaemonSet
+daemonset:
+  enabled: true
+  podSecurityContext:
+    enabled: true
+
+containerSecurityContext:
+  enabled: true
+  privileged: true
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: true
+
+# Your configuration with corrected formatting and secure TLS
 config:
   inputs: |
     [INPUT]
@@ -16,7 +35,6 @@ config:
         Parser docker
         Mem_Buf_Limit 5MB
         Skip_Long_Lines On
-
   filters: |
     [FILTER]
         Name kubernetes
@@ -25,13 +43,18 @@ config:
         Keep_Log Off
         K8S-Logging.Parser On
         K8S-Logging.Exclude On
-
-    [FILTER]
-        Name grep
-        Match kube.*
-        Regex kubernetes['namespace_name'] ^flask$
-
   outputs: |
     [OUTPUT]
-        Name  stdout
-        Match kube.*
+        Name             es
+        Match            *
+        Host             elasticsearch.logging.svc.cluster.local
+        Port             9200
+        HTTP_User        elastic
+        HTTP_Passwd      ${elasticsearch-password} # Using the correct hyphenated variable
+        Logstash_Format  On
+        Logstash_Prefix  kube
+        Suppress_Type_Name On
+        # Secure TLS Configuration
+        tls              On
+        tls.verify       On
+        tls.ca_file      /fluent-bit/certs/ca.crt

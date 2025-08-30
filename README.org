@@ -186,3 +186,29 @@ Application is a simple web app that fetches random facts from the [[https://use
 
 Run it on =0.0.0.0= despite bandit giving errors. Reason is that in a bare hosted environment where you're running server directly, it exposes the application to the outside world with no security restrictions. But in kubernetes this is required for applications inside the cluster to talk to one another and security is actually controlled by kubernetes service types and network policies.
 https://stackoverflow.com/a/30329547
+
+** Step 4: EFK Stack
+*** Fluentbit
+helm install fluent-bit --namespace logging oci://registry-1.docker.io/bitnamicharts/fluent-bit --create-namespace --values values-fluentbit.yaml
+
+We had to set security context to enable fluent-bit to read from /var/logs/containers folder
+
+*** Elasticsearch
+helm install elasticsearch --namespace logging oci://registry-1.docker.io/bitnamicharts/elasticsearch --create-namespace --values values-elasticsearch.yaml
+
+sudo mkdir -p /mnt/es-data
+sudo chmod 777 /mnt/es-data # Make it writable by the Elasticsearch pod
+
+had to add toleration for the controlplane node and node affinity
+
+pass in the password for the user `elastic` through a kubernetes secret
+kubectl create secret generic elasticsearch-secret \
+  --from-literal=elasticsearch-password='password123' \
+  --namespace logging
+
+*** Kibana
+helm install kibana --namespace logging oci://registry-1.docker.io/bitnamicharts/kibana --create-namespace --values values-kibana.yaml
+
+kubectl create secret generic kibana-secret \
+  --from-literal=kibana-password='password1234' \
+  --namespace logging

@@ -1,0 +1,33 @@
+# In your kibana-values.yaml
+persistence:
+  enabled: true
+  storageClass: "local-storage"
+  size: 2Gi
+
+tolerations:
+  - key: "node-role.kubernetes.io/control-plane"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+elasticsearch:
+  hosts:
+    - elasticsearch
+  port: 9200
+  security:
+    auth:
+      enabled: true
+      existingSecret: "kibana-secret"
+      elasticsearchPasswordSecret: "elasticsearch-secret"
+    tls:
+      enabled: true
+      verificationMode: "full"
+      existingSecret: "elasticsearch-master-crt"
+      usePemCerts: true
