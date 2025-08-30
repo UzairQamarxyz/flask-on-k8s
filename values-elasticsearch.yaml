@@ -11,6 +11,18 @@ master:
     - data
     - ingest
 
+  # Increase the Java Heap Size (e.g., to 1 Gibibyte)
+  heapSize: "1g"
+
+  # Also increase the pod's overall memory and CPU limits
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1.5Gi"
+    limits:
+      cpu: "1" # Allow up to 1 full CPU core
+      memory: "2Gi"
+
   # Mount the kibana-secret for the master pod specifically.
   # extraVolumeMounts:
   #   - name: kibana-password-volume

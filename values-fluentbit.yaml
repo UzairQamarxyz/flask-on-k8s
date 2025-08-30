@@ -50,7 +50,7 @@ config:
         Host             elasticsearch.logging.svc.cluster.local
         Port             9200
         HTTP_User        elastic
-        HTTP_Passwd      ${elasticsearch-password} # Using the correct hyphenated variable
+        HTTP_Passwd      password123
         Logstash_Format  On
         Logstash_Prefix  kube
         Suppress_Type_Name On
