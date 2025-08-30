@@ -133,11 +133,15 @@ Use the [[file:scripts/create-kubeconfig.sh][helper script]] to generate the kub
 Use firewall to block access that's the easiest and the safest way
 
 ** Step 2: CI/CD Pipeline
-
-*** SAST
-- Bandit
-*** Security-Scan
-- Bandit: Common python security issues, works on patterns and misses complex code
+*** Jobs
+- check-paths: Checks whether or not the app or the dockerfile changed
+- sast: Run =bandit= for SAST
+- dependency-scan: Run =pip-audit= for dependency audits
+- tests: Run the app_test.py using =pytests=
+- lint-dockerfile: Run =hadolint= to lint the dockerfile
+- build-docker: Build the docker image
+- scan-docker: Scan the docker image for vulnerabilities using =trivy=
+- push-docker: Push docker to my public repository
 
 ** Step 3: Deploy Flask App via Helm
 *** Application
