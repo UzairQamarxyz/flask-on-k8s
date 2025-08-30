@@ -46,7 +46,7 @@ autoscaling:
 
 # --- Network Policy ---
 networkPolicy:
-  enabled: false
+  enabled: true
   allowedNamespaces:
     - ingress-namespace
   allowedPods:
