@@ -1,0 +1,37 @@
+# config:
+#   customParsers: |
+#     [PARSER]
+#         Name        app_json
+#         Format      json
+#         Time_Key    time
+#         Time_Format %Y-%m-%dT%H:%M:%S
+
+# Testing
+config:
+  inputs: |
+    [INPUT]
+        Name tail
+        Path /var/log/containers/*.log
+        Tag kube.*
+        Parser docker
+        Mem_Buf_Limit 5MB
+        Skip_Long_Lines On
+
+  filters: |
+    [FILTER]
+        Name kubernetes
+        Match kube.*
+        Merge_Log On
+        Keep_Log Off
+        K8S-Logging.Parser On
+        K8S-Logging.Exclude On
+
+    [FILTER]
+        Name grep
+        Match kube.*
+        Regex kubernetes['namespace_name'] ^flask$
+
+  outputs: |
+    [OUTPUT]
+        Name  stdout
+        Match kube.*

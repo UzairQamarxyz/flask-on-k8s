@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: {{ .Release.Name }}-deployment
+  annotations:
+    fluentbit.io/parser: app_json
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:

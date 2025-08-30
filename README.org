@@ -43,6 +43,9 @@ helm repo add projectcalico https://docs.tigera.io/calico/charts
 helm install calico projectcalico/tigera-operator --version v3.30.3 --namespace tigera-operator --create-namespace
 #+end_src
 
+#+RESULTS:
+| projectcalico already exists with the same configuration | skipping |
+
 2. Watch the status of the calico pods
 #+begin_src shell
 watch kubectl get pods -n calico-system
@@ -53,6 +56,40 @@ watch kubectl get pods -n calico-system
 sudo cp /opt/cni/bin/calico /opt/cni/bin/calico-ipam /usr/lib/cni/
 #+end_src
 
+**** Cleanup
+
+#+begin_src shell
+# Stop kubelet
+sudo systemctl stop kubelet
+
+# Delete Calico’s CNI config & binaries:
+sudo rm -rf /etc/cni/net.d/*
+sudo rm -rf /opt/cni/bin/*
+
+# Delete leftover Calico state:
+sudo rm -rf /var/lib/cni/
+sudo rm -rf /var/run/calico
+sudo rm -rf /var/lib/calico
+
+# Remove stray network interfaces (tunl0 and cali):*
+sudo ip link delete tunl0
+# remove each cali* interface
+for i in $(ip link show | grep cali | awk -F: '{print $2}' | xargs); do
+  sudo ip link delete $i
+done
+
+# Flush iptables rules (Calico sets a lot of them):
+sudo iptables -F
+sudo iptables -X
+sudo iptables -t nat -F
+sudo iptables -t nat -X
+sudo iptables -t mangle -F
+sudo iptables -t mangle -X
+
+# Restart networking (or reboot to be safe):
+sudo systemctl restart NetworkManager
+sudo systemctl start kubelet
+#+end_src
 
 *** Install Metrics Server
 Let's use Helm for this

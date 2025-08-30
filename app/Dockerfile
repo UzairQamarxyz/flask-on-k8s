@@ -22,4 +22,4 @@ USER app
 EXPOSE 5000
 
 # nosec B104 - Binding to 0.0.0.0 is required inside Kubernetes
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${FLASK_RUN_PORT:-5000} app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${FLASK_RUN_PORT:-5000} --capture-output --log-file=- app:app"]
