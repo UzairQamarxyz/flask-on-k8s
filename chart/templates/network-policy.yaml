@@ -4,7 +4,9 @@ metadata:
   name: {{ .Release.Name }}-allow-ingress
   namespace: {{ .Release.Namespace }}
 spec:
-  podSelector: {} # applies to all pods in this release
+  podSelector:
+    matchLabels:
+      app: {{ .Release.Name }}-deployment
   policyTypes:
     - Ingress
   ingress:
@@ -17,5 +19,5 @@ spec:
         {{- range .Values.networkPolicy.allowedPods }}
         - podSelector:
             matchLabels:
-              {{- toYaml . | nindent 14 }}
+              {{ toYaml . | indent 12 }}
         {{- end }}

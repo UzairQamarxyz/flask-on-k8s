@@ -142,3 +142,6 @@ Use firewall to block access that's the easiest and the safest way
 ** Step 3: Deploy Flask App via Helm
 *** Application
 Application is a simple web app that fetches random facts from the [[https://uselessfacts.jsph.pl/api/v2/facts/random][random facts api]]
+
+Run it on =0.0.0.0= despite bandit giving errors. Reason is that in a bare hosted environment where you're running server directly, it exposes the application to the outside world with no security restrictions. But in kubernetes this is required for applications inside the cluster to talk to one another and security is actually controlled by kubernetes service types and network policies.
+https://stackoverflow.com/a/30329547

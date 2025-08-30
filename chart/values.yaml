@@ -1,15 +1,12 @@
-# values.yaml
-
 # --- Application settings ---
 replicaCount: 2
 
 image:
-  repository: uzayrq/flask-app
+  repository: uzayrq/flask
   tag: "latest"
   pullPolicy: IfNotPresent
 
 app:
-  host: 127.0.0.1
   port: 5000
   title: "Random Facts API"
   language: "en"
@@ -17,7 +14,6 @@ app:
 service:
   type: ClusterIP
   port: 80
-  targetPort: 5000
 
 # --- Resources ---
 resources:
@@ -32,13 +28,13 @@ resources:
 readinessProbe:
   path: /healthz
   port: 5000
-  initialDelaySeconds: 5
+  initialDelaySeconds: 2
   periodSeconds: 10
 
 livenessProbe:
   path: /failcheck
   port: 5000
-  initialDelaySeconds: 10
+  initialDelaySeconds: 5
   periodSeconds: 20
 
 # --- Autoscaling ---
@@ -47,13 +43,6 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 5
   targetCPUUtilizationPercentage: 50
-
-# --- Secrets (reference only, not actual secret values) ---
-envSecrets:
-  - name: flask-secret-env
-    keys:
-      - SECRET_KEY
-      - DATABASE_PASSWORD
 
 # --- Network Policy ---
 networkPolicy:

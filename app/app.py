@@ -1,17 +1,40 @@
+import json
+import logging
 import os
 from typing import Any, Dict
 
 import requests
-from flask import Flask, Response
+from flask import Flask, Response, request
 
 app: Flask = Flask(__name__)
+
+# Configure JSON logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",  # raw message will be JSON
+)
+logger = logging.getLogger(__name__)
 
 API_URL: str = "https://uselessfacts.jsph.pl/api/v2/facts/random"
 TITLE: str = os.getenv("APP_TITLE", "Random Facts API")
 
 
 def get_language() -> str:
+    """Get the language from environment variable or default to 'en'."""
     return os.getenv("APP_LANGUAGE", "en")
+
+
+@app.after_request
+def log_request(response: Response) -> Response:
+    """Log request and response details in JSON format."""
+    log_data = {
+        "method": request.method,
+        "path": request.path,
+        "status": response.status_code,
+        "remote_addr": request.remote_addr,
+    }
+    logger.info(json.dumps(log_data))
+    return response
 
 
 @app.route("/fact")
@@ -39,20 +62,23 @@ def get_fact() -> Response:
         return Response(html, mimetype="text/html")
 
     except Exception as e:
+        logger.error(json.dumps({"error": str(e)}))
         return Response(f"<h3>Error: {str(e)}</h3>", mimetype="text/html", status=500)
 
 
 @app.route("/healthz")
 def healthz() -> Response:
+    """Health check endpoint."""
     return Response("<h3>Status: Ready</h3>", mimetype="text/html")
 
 
 @app.route("/failcheck")
 def failcheck() -> Response:
+    """Liveness check endpoint."""
     return Response("<h3>Status: Alive</h3>", mimetype="text/html")
 
 
 if __name__ == "__main__":
-    host = os.getenv("FLASK_RUN_HOST", "127.0.0.1")
-    port = int(os.getenv("FLASK_RUN_PORT", "5000"))
+    host = "127.0.0.1"
+    port = int(os.getenv("FLASK_RUN_PORT", "80"))
     app.run(host=host, port=port)

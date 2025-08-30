@@ -1,29 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-flask
+  name: {{ .Release.Name }}-deployment
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ .Release.Name }}-flask
+    app: {{ .Release.Name }}-deployment
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-flask
+      app: {{ .Release.Name }}-deployment
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-flask
+        app: {{ .Release.Name }}-deployment
     spec:
       containers:
         - name: flask-app
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - name: http
+              containerPort: {{ .Values.app.port }}
           env:
-            - name: FLASK_RUN_HOST
-              value: "{{ .Values.app.host }}"
             - name: FLASK_RUN_PORT
               value: "{{ .Values.app.port }}"
             - name: APP_TITLE
@@ -32,14 +31,14 @@ spec:
               value: "{{ .Values.app.language }}"
           readinessProbe:
             httpGet:
-              path: /healthz
-              port: {{ .Values.service.port }}
+              path: {{ .Values.readinessProbe.path }}
+              port: {{ .Values.readinessProbe.port }}
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
           livenessProbe:
             httpGet:
-              path: /failcheck
-              port: {{ .Values.service.port }}
+              path: {{ .Values.livenessProbe.path }}
+              port: {{ .Values.livenessProbe.port }}
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           resources:
