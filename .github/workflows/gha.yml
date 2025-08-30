@@ -11,12 +11,16 @@ jobs:
     outputs:
       docker: ${{ steps.filter.outputs.docker }}
     steps:
+      - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
             docker:
               - 'app/Dockerfile'
+            app:
+              - 'app/**'
+          base: "origin/main"
 
   sast:
     runs-on: ${{ vars.RUNNER_OS }}
@@ -46,7 +50,7 @@ jobs:
 
   tests:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: [sast, dependency-scan] # only run after scans succeed
+    needs: [sast, dependency-scan]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -70,6 +74,7 @@ jobs:
   build-docker:
     runs-on: ${{ vars.RUNNER_OS }}
     needs: lint-dockerfile
+    if: needs.check-paths.outputs.docker == 'true' || needs.check-paths.outputs.app == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image
