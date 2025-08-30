@@ -8,10 +8,9 @@ from flask import Flask, Response, request
 
 app: Flask = Flask(__name__)
 
-# Configure JSON logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(message)s",  # raw message will be JSON
+    format="%(message)s",
 )
 logger = logging.getLogger(__name__)
 
