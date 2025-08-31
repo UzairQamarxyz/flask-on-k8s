@@ -6,28 +6,6 @@ on:
   pull_request:
 
 jobs:
-  check-paths:
-    runs-on: ${{ vars.RUNNER_OS }}
-    outputs:
-      docker: ${{ steps.filter.outputs.docker }}
-      app: ${{ steps.filter.outputs.app }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          base: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          filters: |
-            docker:
-              - 'app/Dockerfile'
-            app:
-              - 'app/**'
-            chart:
-              - 'chart/**'
-
   sast:
     runs-on: ${{ vars.RUNNER_OS }}
     steps:
@@ -79,8 +57,7 @@ jobs:
 
   build-docker:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: [lint-dockerfile, check-paths]
-    if: needs.check-paths.outputs.docker == 'true' || needs.check-paths.outputs.app == 'true'
+    needs: [lint-dockerfile]
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image
@@ -94,7 +71,7 @@ jobs:
 
   scan-docker:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: build-docker
+    needs: [build-docker]
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -111,8 +88,7 @@ jobs:
 
   push-docker:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: [scan-docker, check-paths]
-    if: needs.check-paths.outputs.docker == 'true' || needs.check-paths.outputs.app == 'true'
+    needs: [scan-docker]
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -134,8 +110,8 @@ jobs:
 
   deploy-to-kube:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: [push-docker, check-paths]
-    if: github.ref_name == 'main' && needs.check-paths.outputs.chart == 'true'
+    needs: [push-docker]
+    if: github.ref_name == 'main'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
