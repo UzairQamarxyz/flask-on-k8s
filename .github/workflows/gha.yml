@@ -108,7 +108,7 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:${{ github.sha }}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:latest
 
-  deploy-to-kube:
+  deploy-to-k8s:
     runs-on: [self-hosted]
     needs: [push-docker]
     if: github.ref_name == 'main'
@@ -128,9 +128,10 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v4
 
+      - name: Create kubeconfig file
+        run: echo "${{ secrets.KUBECONFIG }}" > ${{ github.workspace }}/kubeconfig
+
       - name: Deploy with Helm
-        env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
         run: |
           helm upgrade --install flask ./chart \
             --namespace flask --create-namespace
