@@ -132,6 +132,5 @@ jobs:
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG }}
         run: |
-          ./scripts/create-kubeconfig.sh
           helm upgrade --install flask ./chart \
             --namespace flask --create-namespace

@@ -150,16 +150,17 @@ Use the [[file:scripts/create-kubeconfig.sh][helper script]] to generate the kub
 ** Restrict Access
 Use firewall to block access that's the easiest and the safest way
 
-** Step 2: CI/CD Pipeline
-*** Jobs
-- check-paths: Checks whether or not the app or the dockerfile changed
-- sast: Run =bandit= for SAST
-- dependency-scan: Run =pip-audit= for dependency audits
-- tests: Run the app_test.py using =pytests=
-- lint-dockerfile: Run =hadolint= to lint the dockerfile
-- build-docker: Build the docker image
-- scan-docker: Scan the docker image for vulnerabilities using =trivy=
-- push-docker: Push docker to my public repository
+** CI/CD Pipeline
+*** Workflow
+Here is a general overview of the entire pipeline
+- *sast:* Run =bandit= for static checks.
+- *dependency-scan:* Run =pip-audit= for dependency audits.
+- *tests:* Run the app_test.py using =pytests=.
+- *lint-dockerfile:* Run =hadolint= to lint the dockerfile.
+- *build-docker:* Build the docker image.
+- *scan-docker:* Scan the docker image for vulnerabilities using =trivy=.
+- *push-docker:* Push docker to my public repository.
+- *deploy-to-kube:* Deploy the helm chart to the cluster via helm on the self-hosted runner(your machine).
 
 ** Step 3: Deploy Flask App via Helm
 *** Application
