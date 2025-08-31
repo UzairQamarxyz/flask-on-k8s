@@ -7,7 +7,7 @@ on:
 
 jobs:
   sast:
-    runs-on: ${{ vars.RUNNER_OS }}
+    runs-on: [self-hosted, deployment]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
@@ -20,7 +20,7 @@ jobs:
         run: bandit -r app -ll
 
   dependency-scan:
-    runs-on: ${{ vars.RUNNER_OS }}
+    runs-on: [self-hosted, deployment]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
@@ -33,7 +33,7 @@ jobs:
         run: pip-audit -r app/requirements.txt
 
   tests:
-    runs-on: ${{ vars.RUNNER_OS }}
+    runs-on: [self-hosted, deployment]
     needs: [sast, dependency-scan]
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         run: pytest -v app/
 
   lint-dockerfile:
-    runs-on: ${{ vars.RUNNER_OS }}
+    runs-on: [self-hosted, deployment]
     needs: tests
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
           dockerfile: ./app/Dockerfile
 
   build-docker:
-    runs-on: ${{ vars.RUNNER_OS }}
+    runs-on: [self-hosted, deployment]
     needs: [lint-dockerfile]
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +70,7 @@ jobs:
           path: image.tar
 
   scan-docker:
-    runs-on: ${{ vars.RUNNER_OS }}
+    runs-on: [self-hosted, deployment]
     needs: [build-docker]
     steps:
       - uses: actions/download-artifact@v4
@@ -87,7 +87,7 @@ jobs:
           severity: HIGH,CRITICAL
 
   push-docker:
-    runs-on: ${{ vars.RUNNER_OS }}
+    runs-on: [self-hosted, deployment]
     needs: [scan-docker]
     steps:
       - uses: actions/download-artifact@v4
@@ -109,7 +109,7 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:latest
 
   deploy-to-kube:
-    runs-on: ${{ vars.RUNNER_OS }}
+    runs-on: [self-hosted, deployment]
     needs: [push-docker]
     if: github.ref_name == 'main'
     steps:
@@ -129,6 +129,9 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Deploy with Helm
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
         run: |
+          ./scripts/create-kubeconfig.sh
           helm upgrade --install flask ./chart \
             --namespace flask --create-namespace

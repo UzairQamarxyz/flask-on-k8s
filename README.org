@@ -3,7 +3,7 @@
 #+AUTHOR:       Uzair Qamar
 #+EMAIL:        uzairqamarxyz@gmail.com
 #+DESCRIPTION:  DevSecOps Assessment Task
-#+KEYWORDS:     kubernetes, helm, kubeadm, python, flask, pytest, cicd
+#+KEYWORDS:     kubernetes, helm, kubeadm, python, flask, pytest, cicd, kibana, fluentbit, elasticsearch
 #+LANGUAGE:     en
 
 
