@@ -111,7 +111,8 @@ jobs:
 
   push-docker:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: scan-docker
+    needs: [scan-docker, check-paths]
+    if: needs.check-paths.outputs.docker == 'true' || needs.check-paths.outputs.app == 'true'
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -133,8 +134,8 @@ jobs:
 
   deploy-to-kube:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: [check-paths]
-    if: github.ref == 'refs/heads/main' && needs.check-paths.outputs.chart == 'true'
+    needs: [push-docker, check-paths]
+    if: github.ref == 'refs/heads/main' && (needs.check-paths.outputs.chart == 'true' || needs.check-paths.outputs.docker == 'true')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
