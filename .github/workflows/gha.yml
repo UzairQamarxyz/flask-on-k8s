@@ -25,6 +25,8 @@ jobs:
               - 'app/Dockerfile'
             app:
               - 'app/**'
+            chart:
+              - 'chart/**'
 
   sast:
     runs-on: ${{ vars.RUNNER_OS }}
@@ -131,8 +133,8 @@ jobs:
 
   deploy-to-kube:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: [push-docker]
-    if: github.ref == 'refs/heads/main'
+    needs: [check-paths]
+    if: github.ref == 'refs/heads/main' && needs.check-paths.outputs.chart == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -151,7 +153,5 @@ jobs:
 
       - name: Deploy with Helm
         run: |
-          helm upgrade --install flask-app ./chart \
-            --namespace logging \
-            --set image.tag=${{ github.sha }} \
-            --wait
+          helm upgrade --install flask ./chart \
+            --namespace flask
