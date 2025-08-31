@@ -31,3 +31,14 @@ elasticsearch:
       verificationMode: "full"
       existingSecret: "elasticsearch-master-crt"
       usePemCerts: true
+
+extraConfiguration:
+  xpack.fleet.enabled: false
+  telemetry.enabled: false
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 300
+  timeoutSeconds: 10
+  periodSeconds: 15
+  failureThreshold: 10

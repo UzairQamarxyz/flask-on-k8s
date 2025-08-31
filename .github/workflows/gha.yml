@@ -128,3 +128,30 @@ jobs:
           docker tag flask:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/flask:${{ github.sha }}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:${{ github.sha }}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:latest
+
+  deploy-to-kube:
+    runs-on: ${{ vars.RUNNER_OS }}
+    needs: [push-docker]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure Kubernetes context
+        uses: azure/k8s-set-context@v4
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install flask-app ./chart \
+            --namespace logging \
+            --set image.tag=${{ github.sha }} \
+            --wait

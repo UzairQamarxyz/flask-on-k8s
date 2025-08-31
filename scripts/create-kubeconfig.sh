@@ -1,64 +1,108 @@
 #!/usr/bin/env sh
 
-# Create a serviceaccount, role and rolebinding for EKS
-# to generate a kubeconfig
-#
-# Many parts of this script have been taken from this guide:
-# https://docs.armory.io/docs/armory-admin/manual-service-account/
+# This script creates a dedicated ServiceAccount and associated RBAC (Role, RoleBinding)
+# for deploying Helm charts from a CI/CD system like GitHub Actions.
+# It then generates a self-contained kubeconfig file for that ServiceAccount.
 
-# namespace where the service account will be stored
-NAMESPACE=flask-app
+# --- Configuration ---
+# The namespace for your application and the deployer account.
+# The script will create this namespace if it doesn't exist.
+NAMESPACE="flask"
 
-#kubectl create ns ${NAMESPACE}
-#kubectl apply -f specs/
+# The name for the ServiceAccount that will be used for deployment.
+SERVICE_ACCOUNT_NAME="helm-deployer"
 
-SERVICE_ACCOUNT_NAME=deployer
-CONTEXT=$(kubectl config current-context)
+# The filename for the output kubeconfig.
+KUBECONFIG_FILE="kubeconfig-${NAMESPACE}-${SERVICE_ACCOUNT_NAME}.yaml"
+# --- End of Configuration ---
 
-NEW_CONTEXT=deployer
-KUBECONFIG_FILE="kubeconfig-deployer"
+# Get the details of the current cluster from the user's active kubeconfig
+CURRENT_CONTEXT=$(kubectl config current-context)
+CLUSTER_NAME=$(kubectl config view -o jsonpath="{.contexts[?(@.name==\"${CURRENT_CONTEXT}\")].context.cluster}")
+SERVER_URL=$(kubectl config view -o jsonpath="{.clusters[?(@.name==\"${CLUSTER_NAME}\")].cluster.server}")
+CERTIFICATE_AUTHORITY_DATA=$(kubectl config view --raw -o jsonpath="{.clusters[?(@.name==\"${CLUSTER_NAME}\")].cluster.certificate-authority-data}")
 
+echo "==> Creating Namespace, ServiceAccount, and RBAC resources in the cluster..."
+
+# Create all the necessary Kubernetes resources using a multi-document YAML here-doc.
 kubectl apply -f - <<EOF
 apiVersion: v1
-kind: Secret
+kind: Namespace
+metadata:
+  name: ${NAMESPACE}
+---
+apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: ${SERVICE_ACCOUNT_NAME}
   namespace: ${NAMESPACE}
-  annotations:
-    kubernetes.io/service-account.name: ${SERVICE_ACCOUNT_NAME}
-type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8.s.io/v1
+kind: Role
+metadata:
+  name: ${SERVICE_ACCOUNT_NAME}-role
+  namespace: ${NAMESPACE}
+rules:
+  # This role grants permissions that are commonly needed by Helm to manage a release.
+  # It has full control over the most common application resources within the namespace.
+- apiGroups: ["", "apps", "extensions", "batch", "networking.k8s.io"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${SERVICE_ACCOUNT_NAME}-binding
+  namespace: ${NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ${SERVICE_ACCOUNT_NAME}-role
+subjects:
+- kind: ServiceAccount
+  name: ${SERVICE_ACCOUNT_NAME}
+  namespace: ${NAMESPACE}
 EOF
 
-TOKEN_DATA=$(kubectl get secret ${SERVICE_ACCOUNT_NAME} \
-    --namespace ${NAMESPACE} \
-    -o jsonpath='{.data.token}')
+echo "==> RBAC resources created successfully."
 
-TOKEN=$(echo "${TOKEN_DATA}" | base64 -d)
+# Generate a long-lived token for the Service Account (valid for 1 year)
+echo "==> Generating authentication token for the ServiceAccount..."
+TOKEN=$(kubectl create token ${SERVICE_ACCOUNT_NAME} --namespace ${NAMESPACE} --duration=8760h)
 
-# Create dedicated kubeconfig
-# Create a full copy
-kubectl config view --raw >${KUBECONFIG_FILE}.full.tmp
-# Switch working context to correct context
-kubectl --kubeconfig ${KUBECONFIG_FILE}.full.tmp config use-context ${CONTEXT}
-# Minify
-kubectl --kubeconfig ${KUBECONFIG_FILE}.full.tmp \
-    config view --flatten --minify >${KUBECONFIG_FILE}.tmp
-# Rename context
-kubectl config --kubeconfig ${KUBECONFIG_FILE}.tmp \
-    rename-context "${CONTEXT}" ${NEW_CONTEXT}
-# Create token user
-kubectl config --kubeconfig ${KUBECONFIG_FILE}.tmp \
-    set-credentials "${CONTEXT}"-${NAMESPACE}-token-user \
-    --token "${TOKEN}"
-# Set context to use token user
-kubectl config --kubeconfig ${KUBECONFIG_FILE}.tmp \
-    set-context ${NEW_CONTEXT} --user "${CONTEXT}"-${NAMESPACE}-token-user
-# Set context to correct namespace
-kubectl config --kubeconfig ${KUBECONFIG_FILE}.tmp \
-    set-context ${NEW_CONTEXT} --namespace ${NAMESPACE}
-# Flatten/minify kubeconfig
-kubectl config --kubeconfig ${KUBECONFIG_FILE}.tmp \
-    view --flatten --minify >${KUBECONFIG_FILE}
-# Remove tmp
-rm ${KUBECONFIG_FILE}.full.tmp
-rm ${KUBECONFIG_FILE}.tmp
+if [ -z "$TOKEN" ]; then
+  echo "Error: Failed to generate token." >&2
+  exit 1
+fi
+
+echo "==> Token generated. Creating kubeconfig file: ${KUBECONFIG_FILE}"
+
+# Create the dedicated kubeconfig file from scratch.
+cat <<EOF >${KUBECONFIG_FILE}
+apiVersion: v1
+kind: Config
+current-context: ${SERVICE_ACCOUNT_NAME}
+clusters:
+- name: ${CLUSTER_NAME}
+  cluster:
+    server: ${SERVER_URL}
+    certificate-authority-data: ${CERTIFICATE_AUTHORITY_DATA}
+contexts:
+- name: ${SERVICE_ACCOUNT_NAME}
+  context:
+    cluster: ${CLUSTER_NAME}
+    namespace: ${NAMESPACE}
+    user: ${SERVICE_ACCOUNT_NAME}
+users:
+- name: ${SERVICE_ACCOUNT_NAME}
+  user:
+    token: ${TOKEN}
+EOF
+
+echo
+echo "✅ Success! Kubeconfig saved to ./${KUBECONFIG_FILE}"
+echo
+echo "--- Next Steps for GitHub Actions ---"
+echo "1. Go to your GitHub repository's Settings > Secrets and variables > Actions."
+echo "2. Create a new repository secret (e.g., KUBE_CONFIG)."
+echo "3. Copy the entire content of the '${KUBECONFIG_FILE}' file and paste it into the secret's value."

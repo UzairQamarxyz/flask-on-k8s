@@ -9,55 +9,79 @@
 
 * DevSecOps Assessment
 
-https://docs.tigera.io/calico/latest/getting-started/kubernetes/k8s-single-node
-** Step 1: Cluster Setup
-*** How to setup the cluster
-1. containerd config default | tee /etc/containerd/config.toml > /dev/null
-2. sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" "/etc/containerd/config.toml"
-3. Install kubeadm along with containerd runtime https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
-   1. What is containerd? Why are there so many options
-4. Create a cluster https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network
-   1. For debian users: https://stackoverflow.com/a/74695838
-   2. src_bash[:exports code]{# echo 1 >/proc/sys/net/ipv4/ip_forward} Enable IP Fwd
-   3. src_bash[:exports code]{KUBELET_EXTRA_ARGS=--fail-swap-on=false} If you have swap on in your cluster
-   4. src_bash[:exports code]{sudo kubeadm init --pod-network-cidr=192.168.0.0/16} init kubeadm
-   5. Create a new kube config for kubeadm
-      #+begin_src
+** Cluster Setup
+We'll be creating a single master/worker node cluster using =kubeadm=. We'll be using =containerd= as our runtime =calico= as our CNI.
+*** Pre-requisites
+Make sure you have the following packages installed.
+  - =kubeadm=
+  - =contianerd=
+  - =kubectl=
+
+Create the default containerd settings and set =SystemdCgroup= to true
+#+begin_src shell
+containerd config default | tee /etc/containerd/config.toml > /dev/null
+sed -i "s/SystemdCgroup = false/SystemdCgroup = true/g" "/etc/containerd/config.toml"
+#+end_src
+
+Make sure =net.ipv4.ip_forward= is enabled.
+#+begin_src shell
+sudo sysctl net.ipv4.ip_forward=1
+#+end_src
+
+If you have swap enabled, then set this in your =/etc/default/kubelet= file.
+#+begin_src shell
+KUBELET_EXTRA_ARGS=--fail-swap-on=false
+#+end_src
+
+*** Create the Cluster
+Initialize the cluster with this following command. Change the =pod-network-cidr= if need be.
+#+begin_src shell
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+#+end_src
+
+*** Update your kubeconfig
+Copy the kubeadm kubeconfig.
+#+begin_src shell
 mkdir -p $HOME/.kube
 sudo cp /etc/kubernetes/admin.conf $HOME/.kube/kubeadm-config
 sudo chown $(id -u):$(id -g) $HOME/.kube/kubeadm-config
-      #+end_src
-   6. kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+#+end_src
 
-*** Install Calico
+*** Untaint your node
+In order to run workload on your cluster, you need to remove the taints.
+#+begin_src shell
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+#+end_src
+
+** Install Calico
 https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises
-1. Add this to NetworkManager configuration file.
-#+begin_src
+*** Pre-requisites
+If you're using NetworkManager, then add this to the configuration file.
+#+begin_src scheme
 # /etc/NetworkManager/conf.d/calico.conf
 [keyfile]
 unmanaged-devices=interface-name:cali*;interface-name:tunl*;interface-name:vxlan.calico;interface-name:vxlan-v6.calico;interface-name:wireguard.cali;interface-name:wg-v6.cali
 #+end_src
-1. Install Tigera Operator
+
+*** Install Calico via Tigera Operator
+We'll be using helm chart to deploy Tigera Operator which will in turn install calico.
 #+begin_src shell
 helm repo add projectcalico https://docs.tigera.io/calico/charts
 helm install calico projectcalico/tigera-operator --version v3.30.3 --namespace tigera-operator --create-namespace
 #+end_src
 
-#+RESULTS:
-| projectcalico already exists with the same configuration | skipping |
-
-2. Watch the status of the calico pods
+Watch the status of the calico pods
 #+begin_src shell
 watch kubectl get pods -n calico-system
 #+end_src
 
-3. If the pods are stuck in "ContainerCreating" or "Pending". Make sure the =calico= & =calico-ipam= binaries are also in =/usr/lib/cni/=
+If the pods are stuck in "ContainerCreating" or "Pending". Make sure the =calico= & =calico-ipam= binaries are also in =/usr/lib/cni/=.
 #+begin_src shell
 sudo cp /opt/cni/bin/calico /opt/cni/bin/calico-ipam /usr/lib/cni/
 #+end_src
 
-**** Cleanup
-
+*** Cleanup
+Here's a cleanup script incase you want to cleanup the kubeadm init.
 #+begin_src shell
 # Stop kubelet
 sudo systemctl stop kubelet
@@ -74,8 +98,8 @@ sudo rm -rf /var/lib/calico
 # Remove stray network interfaces (tunl0 and cali):*
 sudo ip link delete tunl0
 # remove each cali* interface
-for i in $(ip link show | grep cali | awk -F: '{print $2}' | xargs); do
-  sudo ip link delete $i
+for i in $(ip -br a | grep -o 'cali[a-f0-9]\+'); do
+    sudo ip link delete "$i"
 done
 
 # Flush iptables rules (Calico sets a lot of them):
@@ -91,13 +115,8 @@ sudo systemctl restart NetworkManager
 sudo systemctl start kubelet
 #+end_src
 
-*** Install Metrics Server
-Let's use Helm for this
-https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/#kubelet-serving-certs
-I ended up doing the insecure tls
-#+begin_src shell
-#+end_src
-
+** Install Metrics Server
+Let's deploy metrics-server via helm chart.
 #+begin_src shell
 helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
 helm upgrade --install metrics-server metrics-server/metrics-server \
@@ -109,64 +128,26 @@ helm upgrade --install metrics-server metrics-server/metrics-server \
   --set "args[4]=--kubelet-insecure-tls"
 #+end_src
 
-*** Enable RBAC & Create SA for Deployments
+#+begin_quote
+Note: We're passing the =--kubelet-insecure-tls= else it gives the following error. No other fixes worked for me.
+x509: cannot validate certificate for <ip> because it doesn't contain any IP SANs
+#+end_quote
+
+** Enable RBAC & Create SA for Deployments
 RBAC should already be enabled. Here's a quick check.
 #+begin_src shell
 kubectl api-versions | grep rbac
 #+end_src
 
-For the Service Account, the Role and the RoleBinding. This is namespaced.
-#+begin_src yaml
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: dev
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: deployer
-  namespace: dev
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  namespace: dev
-  name: deployer-role
-rules:
-  - apiGroups: ["apps"]
-    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: [""]
-    resources: ["pods", "pods/log", "services", "configmaps", "secrets", "persistentvolumeclaims"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["batch"]
-    resources: ["jobs", "cronjobs"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses", "networkpolicies"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: deployer-binding
-  namespace: dev
-subjects:
-  - kind: ServiceAccount
-    name: deployer
-    namespace: dev
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: deployer-role
+Now deploy the RBAC.
+#+begin_src shell
+kubectl apply -f ./cluster/rbac.yaml
 #+end_src
 
-*** Generate and store kubeconfig for SA
+** Generate and store kubeconfig for SA
 Use the [[file:scripts/create-kubeconfig.sh][helper script]] to generate the kubeconfig.
 
-*** Restrict Access
+** Restrict Access
 Use firewall to block access that's the easiest and the safest way
 
 ** Step 2: CI/CD Pipeline
@@ -192,6 +173,7 @@ https://stackoverflow.com/a/30329547
 helm install fluent-bit --namespace logging oci://registry-1.docker.io/bitnamicharts/fluent-bit --create-namespace --values values-fluentbit.yaml
 
 We had to set security context to enable fluent-bit to read from /var/logs/containers folder
+We are mounting elasticsearch TLS so fluent-bit can authenticate with the elasticsearch server
 
 *** Elasticsearch
 helm install elasticsearch --namespace logging oci://registry-1.docker.io/bitnamicharts/elasticsearch --create-namespace --values values-elasticsearch.yaml

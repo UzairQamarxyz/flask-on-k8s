@@ -48,6 +48,4 @@ autoscaling:
 networkPolicy:
   enabled: true
   allowedNamespaces:
-    - ingress-namespace
-  allowedPods:
-    - app: nginx-ingress
+    - logging
