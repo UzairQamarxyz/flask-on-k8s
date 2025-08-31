@@ -134,8 +134,8 @@ jobs:
 
   deploy-to-kube:
     runs-on: ${{ vars.RUNNER_OS }}
-    needs: [check-paths]
-    if: github.ref == 'refs/heads/main' && (needs.check-paths.outputs.chart == 'true' || needs.check-paths.outputs.docker == 'true')
+    needs: [push-docker, check-paths]
+    if: github.ref_name == 'main' && needs.check-paths.outputs.chart == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -154,7 +154,5 @@ jobs:
 
       - name: Deploy with Helm
         run: |
-          helm upgrade --install flask-app ./chart \
-            --namespace logging \
-            --set image.tag=${{ github.sha }} \
-            --wait
+          helm upgrade --install flask ./chart \
+            --namespace flask --create-namespace
