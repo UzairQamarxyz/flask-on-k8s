@@ -167,28 +167,71 @@ Here is a general overview of the entire pipeline. The pipeline will run on all 
 Application is a simple web app that fetches random facts from the [[https://uselessfacts.jsph.pl/api/v2/facts/random][random facts api]].
 
 ** EFK Stack
-*** Fluentbit
-helm install fluent-bit --namespace logging oci://registry-1.docker.io/bitnamicharts/fluent-bit --create-namespace --values values-fluentbit.yaml
+*** EKF Auxiliaries Chart
+This is a chart that deploys auxiliaries needed for the EFK stack.
+These auxiliaries include:
+- A namespace called =logging=
+- A Default Storage class called =local-storage=
+- A Persistent Volume for Elasticsearch called =elasticsearch-pv=
+- A Persistent Volume for Kibana called =kibana-pv=
 
-We had to set security context to enable fluent-bit to read from /var/logs/containers folder
-We are mounting elasticsearch TLS so fluent-bit can authenticate with the elasticsearch server
+This needs to be deployed first before deploying the stack.
 
-*** Elasticsearch
-helm install elasticsearch --namespace logging oci://registry-1.docker.io/bitnamicharts/elasticsearch --create-namespace --values values-elasticsearch.yaml
-
-sudo mkdir -p /mnt/es-data
-sudo chmod 777 /mnt/es-data # Make it writable by the Elasticsearch pod
-
-had to add toleration for the controlplane node and node affinity
-
-pass in the password for the user `elastic` through a kubernetes secret
+*** Secrets for Elasticsearch and Kibana
+Create two secrets in the =logging= namespace.
+One called =elasticsearch-secret= which contains the password for the =elastic= user.
+#+begin_src shell
 kubectl create secret generic elasticsearch-secret \
   --from-literal=elasticsearch-password='password123' \
   --namespace logging
+#+end_src
 
-*** Kibana
-helm install kibana --namespace logging oci://registry-1.docker.io/bitnamicharts/kibana --create-namespace --values values-kibana.yaml
-
+Second called =kibana-secret= which contains the password for the =kibana_system= user.
+#+begin_src
 kubectl create secret generic kibana-secret \
   --from-literal=kibana-password='password1234' \
   --namespace logging
+#+end_src
+
+
+*** Elasticsearch
+Start by creating mount paths for the PV for elasticsearch.
+#+begin_src shell
+sudo mkdir -p /mnt/es-data
+sudo chmod 777 /mnt/es-data # Make it writable by the Elasticsearch pod
+#+end_src
+
+Now install the chart.
+#+begin_src shell
+helm install elasticsearch --namespace logging oci://registry-1.docker.io/bitnamicharts/elasticsearch --create-namespace --values cluster/values-elasticsearch.yaml
+#+end_src
+
+#+begin_quote
+[!NOTE]
+- Password for the =kibana_system= is modified in the =postStart= lifecycle for the elasticsearch chart.
+- The master node will act as the data node as well as the ingest node.
+#+end_quote
+
+*** Fluentbit
+Deploy the fluent-bit helm chart.
+#+begin_src shell
+helm install fluent-bit --namespace logging oci://registry-1.docker.io/bitnamicharts/fluent-bit --create-namespace --values cluster/values-fluentbit.yaml
+#+end_src
+
+#+begin_quote
+[!IMPORTANT]
+- We had to set security context to enable fluent-bit to read from =/var/logs/containers= folder.
+- We are mounting elasticsearch TLS so fluent-bit can authenticate with the elasticsearch server.
+#+end_quote
+
+*** Kibana
+Start by creating mount paths for the PV for elasticsearch.
+#+begin_src shell
+sudo mkdir -p /mnt/kibana-data
+sudo chmod 777 /mnt/kibana-data # Make it writable by the Elasticsearch pod
+#+end_src
+
+Now install the chart.
+#+begin_src shell
+helm install kibana --namespace logging oci://registry-1.docker.io/bitnamicharts/kibana --create-namespace --values cluster/values-kibana.yaml
+#+end_src

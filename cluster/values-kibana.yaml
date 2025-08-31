@@ -1,4 +1,3 @@
-# In your kibana-values.yaml
 persistence:
   enabled: true
   storageClass: "local-storage"
