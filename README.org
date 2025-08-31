@@ -52,7 +52,6 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 #+end_src
 
 ** Install Calico
-https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises
 *** Pre-requisites
 If you're using NetworkManager, then add this to the configuration file.
 #+begin_src scheme
@@ -227,7 +226,7 @@ helm install fluent-bit --namespace logging oci://registry-1.docker.io/bitnamich
 Start by creating mount paths for the PV for elasticsearch.
 #+begin_src shell
 sudo mkdir -p /mnt/kibana-data
-sudo chmod 777 /mnt/kibana-data # Make it writable by the Elasticsearch pod
+sudo chmod 777 /mnt/kibana-data # Make it writable by the Kibana pod
 #+end_src
 
 Now install the chart.
@@ -241,3 +240,8 @@ Once Kibana is up and running, port forward the service and access the dashboard
 echo "Visit http://127.0.0.1:8080 to use your application"
 kubectl port-forward -n logging svc/kibana 8080:5601
 #+end_src
+
+#+caption: Kibana Dashboard
+#+BEGIN_HTML
+<img src="./docs/kibana dashboard.png" />
+#+END_HTML
