@@ -7,8 +7,6 @@
 #+LANGUAGE:     en
 
 
-* DevSecOps Assessment
-
 ** Cluster Setup
 We'll be creating a single master/worker node cluster using =kubeadm=. We'll be using =containerd= as our runtime =calico= as our CNI.
 *** Pre-requisites
@@ -129,6 +127,7 @@ helm upgrade --install metrics-server metrics-server/metrics-server \
 #+end_src
 
 #+begin_quote
+[!NOTE]
 Note: We're passing the =--kubelet-insecure-tls= else it gives the following error. No other fixes worked for me.
 x509: cannot validate certificate for <ip> because it doesn't contain any IP SANs
 #+end_quote
@@ -234,4 +233,11 @@ sudo chmod 777 /mnt/kibana-data # Make it writable by the Elasticsearch pod
 Now install the chart.
 #+begin_src shell
 helm install kibana --namespace logging oci://registry-1.docker.io/bitnamicharts/kibana --create-namespace --values cluster/values-kibana.yaml
+#+end_src
+
+** Kibana Access
+Once Kibana is up and running, port forward the service and access the dashboard locally via the following command.
+#+begin_src shell
+echo "Visit http://127.0.0.1:8080 to use your application"
+kubectl port-forward -n logging svc/kibana 8080:5601
 #+end_src

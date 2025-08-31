@@ -1,3 +1,8 @@
+rbac:
+  create: true
+serviceAccount:
+  create: true
+
 extraVolumes:
   - name: es-ca
     secret:
@@ -39,18 +44,16 @@ config:
         Parser docker
         Mem_Buf_Limit 5MB
         Skip_Long_Lines On
+
   filters: |
     [FILTER]
-        Name kubernetes
-        Match kube.*
-        Merge_Log On
-        Keep_Log Off
-    [FILTER]
-        Name parser
-        Match kube.*
-        Key_Name log
-        Parser flask_json
-        Reserve_Data On
+        Name            kubernetes
+        Match           kube.*
+        Kube_URL        https://kubernetes.default.svc:443
+        Kube_CA_File    /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File /var/run/secrets/kubernetes.io/serviceaccount/token
+        Merge_Log       Off
+        Keep_Log        On
 
   outputs: |
     [OUTPUT]
