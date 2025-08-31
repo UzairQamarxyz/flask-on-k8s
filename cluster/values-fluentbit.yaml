@@ -1,4 +1,3 @@
-# Use a secure TLS configuration by mounting the Elasticsearch CA certificate
 extraVolumes:
   - name: es-ca
     secret:
@@ -10,22 +9,20 @@ extraVolumeMounts:
     subPath: ca.crt
     readOnly: true
 
-# Mount the elastic password from its secret
 extraEnvVarsSecret: "elasticsearch-secret"
 
-# Correctly configure security contexts for a DaemonSet
 daemonset:
   enabled: true
   podSecurityContext:
     enabled: true
 
+# Needed because we need to read /var/logs/contianers which can't be done by regular user
 containerSecurityContext:
   enabled: true
   privileged: true
   readOnlyRootFilesystem: false
   allowPrivilegeEscalation: true
 
-# Your configuration with corrected formatting and secure TLS
 config:
   customParsers: |
     [PARSER]

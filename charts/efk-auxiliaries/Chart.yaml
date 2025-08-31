@@ -1,0 +1,6 @@
+apiVersion: v2
+name: efk-auxiliaries
+description: This helm chart provisions namespace, PV, SC to be used in EFK deployment
+type: application
+version: 0.1.0
+appVersion: "1.16.0"

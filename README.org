@@ -152,7 +152,7 @@ Use firewall to block access that's the easiest and the safest way
 
 ** CI/CD Pipeline
 *** Workflow
-Here is a general overview of the entire pipeline
+Here is a general overview of the entire pipeline. The pipeline will run on all pushes and PRs to =main=.
 - *sast:* Run =bandit= for static checks.
 - *dependency-scan:* Run =pip-audit= for dependency audits.
 - *tests:* Run the app_test.py using =pytests=.
@@ -162,14 +162,11 @@ Here is a general overview of the entire pipeline
 - *push-docker:* Push docker to my public repository.
 - *deploy-to-kube:* Deploy the helm chart to the cluster via helm on the self-hosted runner(your machine).
 
-** Step 3: Deploy Flask App via Helm
-*** Application
-Application is a simple web app that fetches random facts from the [[https://uselessfacts.jsph.pl/api/v2/facts/random][random facts api]]
+** The Flask Application
+*** Overview
+Application is a simple web app that fetches random facts from the [[https://uselessfacts.jsph.pl/api/v2/facts/random][random facts api]].
 
-Run it on =0.0.0.0= despite bandit giving errors. Reason is that in a bare hosted environment where you're running server directly, it exposes the application to the outside world with no security restrictions. But in kubernetes this is required for applications inside the cluster to talk to one another and security is actually controlled by kubernetes service types and network policies.
-https://stackoverflow.com/a/30329547
-
-** Step 4: EFK Stack
+** EFK Stack
 *** Fluentbit
 helm install fluent-bit --namespace logging oci://registry-1.docker.io/bitnamicharts/fluent-bit --create-namespace --values values-fluentbit.yaml
 

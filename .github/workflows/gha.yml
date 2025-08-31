@@ -133,5 +133,5 @@ jobs:
 
       - name: Deploy with Helm
         run: |
-          helm upgrade --install flask ./chart \
+          helm upgrade --install flask ./charts/flask \
             --namespace flask --create-namespace
