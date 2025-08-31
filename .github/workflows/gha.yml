@@ -7,7 +7,7 @@ on:
 
 jobs:
   sast:
-    runs-on: [self-hosted, deployment]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
@@ -20,7 +20,7 @@ jobs:
         run: bandit -r app -ll
 
   dependency-scan:
-    runs-on: [self-hosted, deployment]
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
@@ -33,7 +33,7 @@ jobs:
         run: pip-audit -r app/requirements.txt
 
   tests:
-    runs-on: [self-hosted, deployment]
+    runs-on: [self-hosted]
     needs: [sast, dependency-scan]
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         run: pytest -v app/
 
   lint-dockerfile:
-    runs-on: [self-hosted, deployment]
+    runs-on: [self-hosted]
     needs: tests
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
           dockerfile: ./app/Dockerfile
 
   build-docker:
-    runs-on: [self-hosted, deployment]
+    runs-on: [self-hosted]
     needs: [lint-dockerfile]
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +70,7 @@ jobs:
           path: image.tar
 
   scan-docker:
-    runs-on: [self-hosted, deployment]
+    runs-on: [self-hosted]
     needs: [build-docker]
     steps:
       - uses: actions/download-artifact@v4
@@ -87,7 +87,7 @@ jobs:
           severity: HIGH,CRITICAL
 
   push-docker:
-    runs-on: [self-hosted, deployment]
+    runs-on: [self-hosted]
     needs: [scan-docker]
     steps:
       - uses: actions/download-artifact@v4
@@ -109,7 +109,7 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/flask:latest
 
   deploy-to-kube:
-    runs-on: [self-hosted, deployment]
+    runs-on: [self-hosted]
     needs: [push-docker]
     if: github.ref_name == 'main'
     steps:
