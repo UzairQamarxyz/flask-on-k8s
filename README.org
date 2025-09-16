@@ -164,6 +164,12 @@ Here is a general overview of the entire pipeline. The pipeline will run on all 
 *** Overview
 Application is a simple web app that fetches random facts from the [[https://uselessfacts.jsph.pl/api/v2/facts/random][random facts api]].
 
+*** Installation
+Run the following command to install the application via helm.
+#+begin_src shell
+helm upgrade --install flask ./charts/flask -n flask --create-namespace
+#+end_src
+
 ** EFK Stack
 *** EKF Auxiliaries Chart
 This is a chart that deploys auxiliaries needed for the EFK stack.
@@ -174,6 +180,9 @@ These auxiliaries include:
 - A Persistent Volume for Kibana called =kibana-pv=
 
 This needs to be deployed first before deploying the stack.
+#+begin_src shell
+helm upgrade --install efk-auxiliaries ./charts/efk-auxiliaries/ -n logging --create-namespace
+#+end_src
 
 *** Secrets for Elasticsearch and Kibana
 Create two secrets in the =logging= namespace.
@@ -233,6 +242,7 @@ Now install the chart.
 #+begin_src shell
 helm install kibana --namespace logging oci://registry-1.docker.io/bitnamicharts/kibana --create-namespace --values cluster/values-kibana.yaml
 #+end_src
+
 
 ** Kibana Access
 Once Kibana is up and running, port forward the service and access the dashboard locally via the following command.

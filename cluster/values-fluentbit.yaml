@@ -29,20 +29,13 @@ containerSecurityContext:
   allowPrivilegeEscalation: true
 
 config:
-  customParsers: |
-    [PARSER]
-        Name     flask_json
-        Format   json
-        Time_Key time
-        Time_Format %Y-%m-%dT%H:%M:%S.%L
-
   inputs: |
     [INPUT]
-        Name tail
-        Path /var/log/containers/*.log
-        Tag kube.*
-        Parser docker
-        Mem_Buf_Limit 5MB
+        Name            tail
+        Path            /var/log/containers/*.log
+        Tag             kube.*
+        Parser          docker
+        Mem_Buf_Limit   5MB
         Skip_Long_Lines On
 
   filters: |
@@ -57,16 +50,17 @@ config:
 
   outputs: |
     [OUTPUT]
-        Name             es
-        Match            *
-        Host             elasticsearch.logging.svc.cluster.local
-        Port             9200
-        HTTP_User        elastic
-        HTTP_Passwd      password123
-        Logstash_Format  On
-        Logstash_Prefix  kube
+        Name               es
+        Match              *
+        Host               elasticsearch.logging.svc.cluster.local
+        Port               9200
+        HTTP_User          elastic
+        HTTP_Passwd        password123
+        Logstash_Format    On
+        Logstash_Prefix    kube
         Suppress_Type_Name On
-        # Secure TLS Configuration
-        tls              On
-        tls.verify       On
-        tls.ca_file      /fluent-bit/certs/ca.crt
+        tls                On
+        tls.verify         On
+        tls.ca_file        /fluent-bit/certs/ca.crt
+        Trace_Error        On
+        Replace_Dots       On

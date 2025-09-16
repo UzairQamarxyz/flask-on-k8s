@@ -10,7 +10,7 @@ app: Flask = Flask(__name__)
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(message)s",
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -25,14 +25,13 @@ def get_language() -> str:
 
 @app.after_request
 def log_request(response: Response) -> Response:
-    """Log request and response details in JSON format."""
-    log_data = {
-        "method": request.method,
-        "path": request.path,
-        "status": response.status_code,
-        "remote_addr": request.remote_addr,
-    }
-    logger.info(json.dumps(log_data))
+    """Log request and response details in plain text format."""
+    # UPDATE THIS: Change the log message to a simple string
+    log_message = (
+        f'method={request.method} path="{request.path}" '
+        f'status={response.status_code} remote_addr={request.remote_addr}'
+    )
+    logger.info(log_message)
     return response
 
 
