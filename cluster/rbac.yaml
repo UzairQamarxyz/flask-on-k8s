@@ -9,7 +9,7 @@ metadata:
   name: helm-deployer
   namespace: flask
 ---
-apiVersion: rbac.authorization.k8.s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: helm-deployer-role
